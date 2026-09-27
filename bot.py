@@ -40,24 +40,28 @@ def run_bot():
         return
 
     cl = Client()
+
+    # Принудительно ставим СВЕЖИЙ User-Agent (v410), который проходит фильтры Instagram
     cl.set_user_agent(
-        "Instagram 296.0.0.19.116 Android (30/11; 420dpi; 1080x2400; "
-        "samsung; SM-G991B; o1s; exynos2100; en_US; 401210834)"
+        "Instagram 410.0.0.0.96 Android (33/13; 480dpi; 1080x2400; "
+        "xiaomi; M2007J20CG; surya; qcom; en_US; 641123490)"
     )
     cl.set_device({
-        "app_version": "296.0.0.19.116",
-        "android_version": 30,
-        "android_release": "11",
-        "dpi": "420dpi",
+        "app_version": "410.0.0.0.96",
+        "android_version": 33,
+        "android_release": "13",
+        "dpi": "480dpi",
         "resolution": "1080x2400",
-        "manufacturer": "samsung",
-        "device": "o1s",
-        "model": "SM-G991B",
-        "cpu": "exynos2100",
-        "version_code": "401210834",
+        "manufacturer": "xiaomi",
+        "device": "surya",
+        "model": "M2007J20CG",
+        "cpu": "qcom",
+        "version_code": "641123490",
     })
 
     try:
+        # Загружаем старую сессию, если она есть, и ПРИНУДИТЕЛЬНО обновляем профиль
+        cl.load_settings("session.json", override_app_version=True)
         cl.login(USERNAME, PASSWORD)
         cl.dump_settings("session.json")
         print("[+] Логин ок")
