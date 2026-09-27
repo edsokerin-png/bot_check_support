@@ -3,7 +3,6 @@ import sqlite3, bot, os
 
 app = Flask(__name__)
 
-# Запускаем бота ТОЛЬКО в главном процессе, а не в воркерах gunicorn
 if os.environ.get("RUN_MAIN") != "true":
     try:
         bot.start_bot_thread()
