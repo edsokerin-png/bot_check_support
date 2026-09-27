@@ -41,6 +41,26 @@ def run_bot():
 
     cl = Client()
     try:
+        cl.set_device({
+            "app_version": "448.0.0.52.84",
+            "android_version": 33,
+            "android_release": "13.0",
+            "dpi": "420dpi",
+            "resolution": "1080x2400",
+            "manufacturer": "samsung",
+            "device": "o1s",
+            "model": "SM-G991B",
+            "cpu": "exynos2100",
+            "version_code": "368094334",
+        })
+        cl.set_user_agent(
+            "Instagram 448.0.0.52.84 Android (33/13.0; 420dpi; 1080x2400; "
+            "samsung; SM-G991B; o1s; exynos2100; en_US; 368094334)"
+        )
+    except Exception as e:
+        print("[-] set_device error:", repr(e))
+
+    try:
         cl.login(USERNAME, PASSWORD)
         try:
             cl.dump_settings("session.json")
