@@ -4,7 +4,7 @@ import sqlite3, bot
 app = Flask(__name__)
 bot.start_bot_thread()
 
-ADMIN_PASSWORD = "supersecret"   # СМЕНИ ПАРОЛЬ
+ADMIN_PASSWORD = "supersecret"
 
 LOGIN = """<form method=post>
 <input name=pw type=password placeholder="Пароль">
