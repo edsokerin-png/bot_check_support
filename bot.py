@@ -1,15 +1,11 @@
 from instagrapi import Client
 import os, threading, time, sqlite3, datetime, re
 
-USERNAME = os.environ.get("IG_USER")
-PASSWORD = os.environ.get("IG_PASS")
-TARGET   = os.environ.get("IG_TARGET")
-
-print("=== ENV CHECK ===")
-print("IG_USER =", USERNAME)
-print("IG_PASS set:", bool(PASSWORD))
-print("IG_TARGET =", TARGET)
-print("=================")
+# --- НАСТРОЙКИ ---
+USERNAME   = os.environ.get("IG_USER")
+PASSWORD   = os.environ.get("IG_PASS")
+TARGET     = os.environ.get("IG_TARGET")
+SESSIONID  = os.environ.get("IG_SESSIONID")
 
 FIRST_MSG = (
     "Здравствуйте! Это официальная проверка пользователей на наличие ботов. "
@@ -35,13 +31,12 @@ def init_db():
     db.close()
 
 def run_bot():
-    if not USERNAME or not PASSWORD:
-        print("[-] FATAL: IG_USER или IG_PASS не заданы")
+    if not SESSIONID:
+        print("[-] FATAL: IG_SESSIONID не задан")
         return
 
     cl = Client()
-
-    # Принудительно ставим СВЕЖИЙ User-Agent (v410), который проходит фильтры Instagram
+    # Настройка современного User-Agent, который пропускает Instagram
     cl.set_user_agent(
         "Instagram 410.0.0.0.96 Android (33/13; 480dpi; 1080x2400; "
         "xiaomi; M2007J20CG; surya; qcom; en_US; 641123490)"
@@ -60,11 +55,8 @@ def run_bot():
     })
 
     try:
-        # Загружаем старую сессию, если она есть, и ПРИНУДИТЕЛЬНО обновляем профиль
-        cl.load_settings("session.json", override_app_version=True)
-        cl.login(USERNAME, PASSWORD)
-        cl.dump_settings("session.json")
-        print("[+] Логин ок")
+        cl.login_by_sessionid(SESSIONID)
+        print("[+] Логин по sessionid ок")
     except Exception as e:
         print("[-] login error:", repr(e))
         return
