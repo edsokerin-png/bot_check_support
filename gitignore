@@ -1,0 +1,4 @@
+session.json
+victims.db
+__pycache__/
+*.pyc
